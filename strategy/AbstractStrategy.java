@@ -18,7 +18,7 @@ public abstract class AbstractStrategy {
 
 	public abstract List<Move> apply();
 
-	protected Optional<Planet> findClosestOwnPlanet(Ship ship) {
+	protected List<Planet> findClosestOwnPlanets(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
 				.sorted(Map.Entry.comparingByKey())
 				.map(Map.Entry::getValue)
@@ -26,7 +26,12 @@ public abstract class AbstractStrategy {
 				.map(e -> (Planet) e)
 				.filter(p -> p.isOwned() && p.getOwner() == gameMap.getMyPlayer().getId())
 				.filter(p -> !ship.canDock(p)) // not the spawn planet
-				.findFirst();
+				.collect(Collectors.toList());
+	}
+
+	protected Optional<Planet> findClosestOwnPlanet(Ship ship) {
+		List<Planet> ownPlanets = findClosestOwnPlanets(ship);
+		return ownPlanets.size() > 0 ? Optional.of(ownPlanets.get(0)) : Optional.empty();
 	}
 
 	protected Optional<Planet> findClosestEmptyNonTargetedPlanet(Ship ship) {
@@ -35,7 +40,7 @@ public abstract class AbstractStrategy {
 				.map(Map.Entry::getValue)
 				.filter(e -> e instanceof Planet)
 				.map(e -> (Planet) e)
-				.filter(p -> !p.isFull() && !p.isOwned())
+				.filter(p -> !p.isOwned())
 				.filter(p -> !shipTargets.values().contains(p))
 				.findFirst();
 	}

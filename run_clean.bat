@@ -1,5 +1,5 @@
 rm *.log
 rm replay-*
 rm *.class
-rm hlt/*.class
+rm **/*.class
 rm *.zip

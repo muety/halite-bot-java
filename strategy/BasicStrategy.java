@@ -18,10 +18,13 @@ public class BasicStrategy extends AbstractStrategy {
 				.filter(ship -> ship.getDockingStatus() == Ship.DockingStatus.Undocked)
 				.map(ship -> {
 					Optional<Entity> target = getShipTarget(ship);
-					if (target.isPresent() && target.get() instanceof Planet && !((Planet) target.get()).isFull()) {
+					if (target.isPresent() && target.get() instanceof Planet && (!((Planet) target.get()).isOwned() || target.get().getOwner() == gameMap.getMyPlayer().getId())) {
 						Planet targetPlanet = (Planet) target.get();
 						Log.log(String.format("Ship %s has target planet %s with distance of %s.", ship.getId(), targetPlanet.getId(), ship.getDistanceTo(targetPlanet)));
-						if (ship.canDock(targetPlanet)) return new DockMove(ship, targetPlanet);
+						if (ship.canDock(targetPlanet)) {
+							shipTargets.remove(ship.getId());
+							return new DockMove(ship, targetPlanet);
+						}
 						return Navigation.navigateShipToDock(gameMap, ship, targetPlanet, Constants.MAX_SPEED);
 					}
 					else if (target.isPresent() && target.get() instanceof Ship) {
@@ -35,18 +38,18 @@ public class BasicStrategy extends AbstractStrategy {
 					Log.log(String.format("Ship %s doesn't have a target, yet.", ship.getId()));
 
 					Optional<Planet> closestEmptyPlanet = findClosestEmptyNonTargetedPlanet(ship);
-					Optional<Planet> closestOwnPlanet = findClosestOwnPlanet(ship);
+					Optional<Planet> closestOwnPlanet = findClosestOwnPlanets(ship).stream().filter(p -> p.getDockedShips().size() <= 2).findFirst();
 					Optional<Ship> closestEnemy = findClosestEnemyShip(ship);
 					Optional<Ship> closestTargetedEnemy = findClosestTargetedEnemyShip(ship);
 
 					Map<Optional, Double> weightMap = new HashMap<>();
 					weightMap.put(closestEmptyPlanet, 1.0);
-					weightMap.put(closestOwnPlanet, 1.5);
-					weightMap.put(closestTargetedEnemy, 1.5);
-					weightMap.put(closestEnemy, 2.0);
+					weightMap.put(closestOwnPlanet, 4.0);
+					weightMap.put(closestTargetedEnemy, 2.0);
+					weightMap.put(closestEnemy, 2.5);
 
-					Optional<Entity> bestTarget = getBestTarget(ship, new Optional[]{closestEmptyPlanet, closestOwnPlanet, closestEnemy}, weightMap);
-					if (bestTarget.isPresent()) return targetTo(ship, bestTarget.get());
+					List<Entity> priorityList = getTargetPriorityByWeightedDistance(ship, new Optional[]{closestEmptyPlanet, closestOwnPlanet, closestTargetedEnemy, closestEnemy}, weightMap);
+					if (!priorityList.isEmpty()) return targetTo(ship, priorityList.get(0));
 
 					Log.log(String.format("Ship %s can't find a good target anymore.", ship.getId()));
 
@@ -57,11 +60,11 @@ public class BasicStrategy extends AbstractStrategy {
 
 	}
 
-	private Optional<Entity> getBestTarget(Ship ship, Optional<Entity>[] targets, Map<Optional, Double> weightMap) {
+	private List<Entity> getTargetPriorityByWeightedDistance(Ship ship, Optional<Entity>[] targets, Map<Optional, Double> weightMap) {
 		return Arrays.stream(targets)
-				.filter(t -> t.isPresent() && t.get() != null)
+				.filter(t -> t.isPresent())
 				.map(Optional::get)
 				.sorted(Comparator.comparingDouble(t -> ship.getDistanceTo(t) * weightMap.getOrDefault(t, 1.0)))
-				.findFirst();
+				.collect(Collectors.toList());
 	}
 }
