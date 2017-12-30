@@ -6,6 +6,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class BasicStrategy extends AbstractStrategy {
+	private static final int MAX_OWN_DOCKINGS = 3;
+
 	public BasicStrategy(GameMap gameMap) {
 		super(gameMap);
 	}
@@ -18,7 +20,7 @@ public class BasicStrategy extends AbstractStrategy {
 				.filter(ship -> ship.getDockingStatus() == Ship.DockingStatus.Undocked)
 				.map(ship -> {
 					Optional<Entity> target = getShipTarget(ship);
-					if (target.isPresent() && target.get() instanceof Planet && (!((Planet) target.get()).isOwned() || target.get().getOwner() == gameMap.getMyPlayer().getId())) {
+					if (isTargetPlanetValid(target)) {
 						Planet targetPlanet = (Planet) target.get();
 						Log.log(String.format("Ship %s has target planet %s with distance of %s.", ship.getId(), targetPlanet.getId(), ship.getDistanceTo(targetPlanet)));
 						if (ship.canDock(targetPlanet)) {
@@ -38,7 +40,7 @@ public class BasicStrategy extends AbstractStrategy {
 					Log.log(String.format("Ship %s doesn't have a target, yet.", ship.getId()));
 
 					Optional<Planet> closestEmptyPlanet = findClosestEmptyNonTargetedPlanet(ship);
-					Optional<Planet> closestOwnPlanet = findClosestOwnPlanets(ship).stream().filter(p -> p.getDockedShips().size() <= 2).findFirst();
+					Optional<Planet> closestOwnPlanet = findClosestOwnPlanets(ship).stream().filter(p -> p.getDockedShips().size() < MAX_OWN_DOCKINGS).findFirst();
 					Optional<Ship> closestEnemy = findClosestEnemyShip(ship);
 					Optional<Ship> closestTargetedEnemy = findClosestTargetedEnemyShip(ship);
 
@@ -58,6 +60,16 @@ public class BasicStrategy extends AbstractStrategy {
 				.filter(Objects::nonNull)
 				.collect(Collectors.toList());
 
+	}
+
+	private boolean isTargetPlanetValid(Optional<Entity> target) {
+		if (!target.isPresent()) return false;
+		if (!(target.get() instanceof Planet)) return false;
+		if (((Planet) target.get()).isOwned()) {
+			if (target.get().getOwner() != gameMap.getMyPlayer().getId()) return false;
+			if (((Planet) target.get()).getDockedShips().size() > MAX_OWN_DOCKINGS) return false;
+		}
+		return true;
 	}
 
 	private List<Entity> getTargetPriorityByWeightedDistance(Ship ship, Optional<Entity>[] targets, Map<Optional, Double> weightMap) {

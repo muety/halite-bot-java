@@ -25,6 +25,7 @@ public abstract class AbstractStrategy {
 				.filter(e -> e instanceof Planet)
 				.map(e -> (Planet) e)
 				.filter(p -> p.isOwned() && p.getOwner() == gameMap.getMyPlayer().getId())
+				.filter(p -> !shipTargets.values().contains(p))
 				.filter(p -> !ship.canDock(p)) // not the spawn planet
 				.collect(Collectors.toList());
 	}
