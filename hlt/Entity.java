@@ -41,4 +41,11 @@ public class Entity extends Position {
                 ", radius=" + radius +
                 "]";
     }
+
+    public String summary() {
+        String type = "entity";
+        if (this instanceof Planet) type = "planet";
+        else if (this instanceof Ship) type = "ship";
+        return type + " " + getId();
+    }
 }

@@ -50,4 +50,10 @@ public abstract class AbstractStrategy {
 				.filter(e -> myShips.containsKey(e.getKey()))
 				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
+
+	protected Move targetTo(Ship ship, Entity target) {
+		Log.log(String.format("Ship %s chooses %s as new target with distance %s.", ship.getId(), target.summary(), ship.getDistanceTo(target)));
+		shipTargets.put(ship.getId(), target);
+		return new Navigation().navigateShipToDock(gameMap, ship, target, Constants.MAX_SPEED);
+	}
 }

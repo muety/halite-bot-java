@@ -35,22 +35,18 @@ public class BasicStrategy extends AbstractStrategy {
 					Log.log(String.format("Ship %s doesn't have a target, yet.", ship.getId()));
 
 					Optional<Planet> closestPlanet = findClosestEmptyNonTargetedPlanet(ship);
-					if (closestPlanet.isPresent()) {
-						Log.log(String.format("Ship %s chooses planet %s as new target with distance %s.", ship.getId(), closestPlanet.get().getId(), ship.getDistanceTo(closestPlanet.get())));
-						shipTargets.put(ship.getId(), closestPlanet.get());
-						return new Navigation().navigateShipToDock(gameMap, ship, closestPlanet.get(), Constants.MAX_SPEED);
-					}
-
-					Log.log(String.format("Ship %s can't find an empty planet anymore.", ship.getId()));
-
 					Optional<Ship> closestEnemy = findClosestNonTargetedEnemyShip(ship);
-					if (closestEnemy.isPresent()) {
-						Log.log(String.format("Ship %s chooses enemy ship %s as new target with distance %s.", ship.getId(), closestEnemy.get().getId(), ship.getDistanceTo(closestEnemy.get())));
-						shipTargets.put(ship.getId(), closestEnemy.get());
-						return new Navigation().navigateShipToDock(gameMap, ship, closestEnemy.get(), Constants.MAX_SPEED);
-					}
+					double closestPlanetDistance = closestPlanet.isPresent() ? ship.getDistanceTo(closestPlanet.get()) : Integer.MAX_VALUE / 2 - 1;
+					double closestEnemyDistance = closestEnemy.isPresent() ? ship.getDistanceTo(closestEnemy.get()) : Integer.MAX_VALUE / 2 - 1;
 
-					Log.log(String.format("Ship %s can't find an enemy ship anymore.", ship.getId()));
+					if (closestPlanet.isPresent() && closestEnemy.isPresent()) {
+						if (closestPlanetDistance <= closestEnemyDistance * 2) targetTo(ship, closestPlanet.get());
+						else targetTo(ship, closestEnemy.get());
+					}
+					else if (closestPlanet.isPresent()) targetTo(ship, closestPlanet.get());
+					else if (closestEnemy.isPresent()) targetTo(ship, closestEnemy.get());
+
+					Log.log(String.format("Ship %s can't find an empty planet or enemy ship anymore.", ship.getId()));
 
 					return new Move(Move.MoveType.Noop, ship);
 				})
