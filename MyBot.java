@@ -3,6 +3,9 @@ import hlt.Networking;
 import strategy.AbstractStrategy;
 import strategy.StrategyFactory;
 
+// TODO: Avoid collisions among own ships (especially in the beginning)
+// TODO: Dynamically adapt different strategies
+
 public class MyBot {
 
     public static void main(final String[] args) {

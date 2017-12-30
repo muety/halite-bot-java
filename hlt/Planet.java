@@ -38,6 +38,10 @@ public class Planet extends Entity {
         return dockedShips;
     }
 
+    public int numDockedShips() {
+        return getDockedShips().size();
+    }
+
     public boolean isFull() {
         return dockedShips.size() == dockingSpots;
     }

@@ -19,6 +19,7 @@ public class BalancedStrategy extends AbstractStrategy {
 		return gameMap.getMyPlayer().getShips().values().stream()
 				.filter(ship -> ship.getDockingStatus() == Ship.DockingStatus.Undocked)
 				.map(ship -> {
+					// Does the ship already have a target? If yes, keep following it
 					Optional<Entity> target = getShipTarget(ship);
 					if (isTargetPlanetValid(target)) {
 						Planet targetPlanet = (Planet) target.get();
@@ -29,7 +30,7 @@ public class BalancedStrategy extends AbstractStrategy {
 						}
 						return Navigation.navigateShipToDock(gameMap, ship, targetPlanet, Constants.MAX_SPEED);
 					}
-					else if (target.isPresent() && target.get() instanceof Ship) {
+					else if (isTargetEnemyShipValid(target)) {
 						Ship targetEnemy = (Ship) target.get();
 						Log.log(String.format("Ship %s has target enemy ship %s with distance of %s.", ship.getId(), targetEnemy.getId(), ship.getDistanceTo(targetEnemy)));
 						return Navigation.navigateShipToDock(gameMap, ship, targetEnemy, Constants.MAX_SPEED);
@@ -39,11 +40,17 @@ public class BalancedStrategy extends AbstractStrategy {
 
 					Log.log(String.format("Ship %s doesn't have a target, yet.", ship.getId()));
 
+					// Choose a target
 					Optional<Planet> closestEmptyPlanet = findClosestEmptyNonTargetedPlanet(ship);
-					Optional<Planet> closestOwnPlanet = findClosestOwnPlanets(ship).stream().filter(p -> p.getDockedShips().size() < MAX_OWN_DOCKINGS).findFirst();
+					Optional<Planet> closestOwnPlanet = findClosestOwnPlanets(ship).stream().filter(p -> p.numDockedShips() < MAX_OWN_DOCKINGS).findFirst();
 					Optional<Ship> closestEnemy = findClosestEnemyShip(ship);
 					Optional<Ship> closestTargetedEnemy = findClosestTargetedEnemyShip(ship);
 
+					// Most preferable option is to go to the next empty planet.
+					// If it's too far, but an enemy ship is near, attack that ship, even more if
+					// another one of ours ships has also targeted the enemy, because 2 vs. 1 is always good.
+					// If enemy ships and empty planets are both too far or not available at all, target a
+					// planet we already own, but never dock more than 3 of our own ships at the same planet.
 					Map<Optional, Double> weightMap = new HashMap<>();
 					weightMap.put(closestEmptyPlanet, 1.0);
 					weightMap.put(closestOwnPlanet, 4.0);
@@ -55,6 +62,10 @@ public class BalancedStrategy extends AbstractStrategy {
 
 					Log.log(String.format("Ship %s can't find a good target anymore.", ship.getId()));
 
+					// - No more empty planets
+					// - No more planets with less than 3 of our own ships
+					// - No more enemy ships
+					// --> actually, if this even happens, we should have won already
 					return new Move(Move.MoveType.Noop, ship);
 				})
 				.filter(Objects::nonNull)
@@ -67,8 +78,14 @@ public class BalancedStrategy extends AbstractStrategy {
 		if (!(target.get() instanceof Planet)) return false;
 		if (((Planet) target.get()).isOwned()) {
 			if (target.get().getOwner() != gameMap.getMyPlayer().getId()) return false;
-			if (((Planet) target.get()).getDockedShips().size() > MAX_OWN_DOCKINGS) return false;
+			if (((Planet) target.get()).numDockedShips() > MAX_OWN_DOCKINGS) return false;
 		}
+		return true;
+	}
+
+	private boolean isTargetEnemyShipValid(Optional<Entity> target) {
+		if (!target.isPresent()) return false;
+		if (!(target.get() instanceof Ship)) return false;
 		return true;
 	}
 
