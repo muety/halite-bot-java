@@ -1,50 +1,18 @@
 import hlt.*;
-
-import java.util.ArrayList;
+import strategy.AbstractStrategy;
+import strategy.StrategyFactory;
 
 public class MyBot {
 
     public static void main(final String[] args) {
         final Networking networking = new Networking();
-        final GameMap gameMap = networking.initialize("Tamagocchi");
+        final GameMap gameMap = networking.initialize("n1try-basic-v1.3");
 
-        // We now have 1 full minute to analyse the initial map.
-        final String initialMapIntelligence =
-                "width: " + gameMap.getWidth() +
-                "; height: " + gameMap.getHeight() +
-                "; players: " + gameMap.getAllPlayers().size() +
-                "; planets: " + gameMap.getAllPlanets().size();
-        Log.log(initialMapIntelligence);
+        AbstractStrategy currentStrategy = StrategyFactory.chooseStrategy(gameMap);
 
-        final ArrayList<Move> moveList = new ArrayList<>();
-        for (;;) {
-            moveList.clear();
+        while (true) {
             networking.updateMap(gameMap);
-
-            for (final Ship ship : gameMap.getMyPlayer().getShips().values()) {
-                if (ship.getDockingStatus() != Ship.DockingStatus.Undocked) {
-                    continue;
-                }
-
-                for (final Planet planet : gameMap.getAllPlanets().values()) {
-                    if (planet.isOwned()) {
-                        continue;
-                    }
-
-                    if (ship.canDock(planet)) {
-                        moveList.add(new DockMove(ship, planet));
-                        break;
-                    }
-
-                    final ThrustMove newThrustMove = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED/2);
-                    if (newThrustMove != null) {
-                        moveList.add(newThrustMove);
-                    }
-
-                    break;
-                }
-            }
-            Networking.sendMoves(moveList);
+            Networking.sendMoves(currentStrategy.apply());
         }
     }
 }

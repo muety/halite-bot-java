@@ -1,2 +1,5 @@
 *.class
 .idea
+*.log
+replay-*
+*.zip
