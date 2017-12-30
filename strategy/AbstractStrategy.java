@@ -18,6 +18,17 @@ public abstract class AbstractStrategy {
 
 	public abstract List<Move> apply();
 
+	protected Optional<Planet> findClosestOwnPlanet(Ship ship) {
+		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
+				.sorted(Map.Entry.comparingByKey())
+				.map(Map.Entry::getValue)
+				.filter(e -> e instanceof Planet)
+				.map(e -> (Planet) e)
+				.filter(p -> p.isOwned() && p.getOwner() == gameMap.getMyPlayer().getId())
+				.filter(p -> !ship.canDock(p)) // not the spawn planet
+				.findFirst();
+	}
+
 	protected Optional<Planet> findClosestEmptyNonTargetedPlanet(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
 				.sorted(Map.Entry.comparingByKey())
@@ -29,19 +40,35 @@ public abstract class AbstractStrategy {
 				.findFirst();
 	}
 
-	protected Optional<Ship> findClosestNonTargetedEnemyShip(Ship ship) {
+	protected Optional<Ship> findClosestEnemyShip(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
 				.sorted(Map.Entry.comparingByKey())
 				.map(Map.Entry::getValue)
 				.filter(e -> e instanceof Ship)
 				.map(e -> (Ship) e)
 				.filter(s -> s.getOwner() != gameMap.getMyPlayer().getId())
-				.filter(s -> !shipTargets.values().contains(s))
+				.findFirst();
+	}
+
+	protected Optional<Ship> findClosestTargetedEnemyShip(Ship ship) {
+		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
+				.sorted(Map.Entry.comparingByKey())
+				.map(Map.Entry::getValue)
+				.filter(e -> e instanceof Ship)
+				.map(e -> (Ship) e)
+				.filter(s -> s.getOwner() != gameMap.getMyPlayer().getId())
+				.filter(s -> shipTargets.values().contains(s))
 				.findFirst();
 	}
 
 	protected Optional<Entity> getShipTarget(Ship ship) {
-		return shipTargets.containsKey(ship.getId()) ? Optional.of(shipTargets.get(ship.getId())) : Optional.empty();
+		if (!shipTargets.containsKey(ship.getId())) return Optional.empty();
+		else {
+			Entity target = shipTargets.get(ship.getId());
+			if (target instanceof Planet && gameMap.getPlanet(target.getId()) == null) return Optional.empty();
+			else if (target instanceof Ship && gameMap.getAllShips().stream().noneMatch(s -> s.getId() == target.getId())) return Optional.empty();
+			return Optional.of(target);
+		}
 	}
 
 	protected void cleanUp() {

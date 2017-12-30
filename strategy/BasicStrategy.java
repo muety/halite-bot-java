@@ -34,24 +34,34 @@ public class BasicStrategy extends AbstractStrategy {
 
 					Log.log(String.format("Ship %s doesn't have a target, yet.", ship.getId()));
 
-					Optional<Planet> closestPlanet = findClosestEmptyNonTargetedPlanet(ship);
-					Optional<Ship> closestEnemy = findClosestNonTargetedEnemyShip(ship);
-					double closestPlanetDistance = closestPlanet.isPresent() ? ship.getDistanceTo(closestPlanet.get()) : Integer.MAX_VALUE / 2 - 1;
-					double closestEnemyDistance = closestEnemy.isPresent() ? ship.getDistanceTo(closestEnemy.get()) : Integer.MAX_VALUE / 2 - 1;
+					Optional<Planet> closestEmptyPlanet = findClosestEmptyNonTargetedPlanet(ship);
+					Optional<Planet> closestOwnPlanet = findClosestOwnPlanet(ship);
+					Optional<Ship> closestEnemy = findClosestEnemyShip(ship);
+					Optional<Ship> closestTargetedEnemy = findClosestTargetedEnemyShip(ship);
 
-					if (closestPlanet.isPresent() && closestEnemy.isPresent()) {
-						if (closestPlanetDistance <= closestEnemyDistance * 2) targetTo(ship, closestPlanet.get());
-						else targetTo(ship, closestEnemy.get());
-					}
-					else if (closestPlanet.isPresent()) targetTo(ship, closestPlanet.get());
-					else if (closestEnemy.isPresent()) targetTo(ship, closestEnemy.get());
+					Map<Optional, Double> weightMap = new HashMap<>();
+					weightMap.put(closestEmptyPlanet, 1.0);
+					weightMap.put(closestOwnPlanet, 1.5);
+					weightMap.put(closestTargetedEnemy, 1.5);
+					weightMap.put(closestEnemy, 2.0);
 
-					Log.log(String.format("Ship %s can't find an empty planet or enemy ship anymore.", ship.getId()));
+					Optional<Entity> bestTarget = getBestTarget(ship, new Optional[]{closestEmptyPlanet, closestOwnPlanet, closestEnemy}, weightMap);
+					if (bestTarget.isPresent()) return targetTo(ship, bestTarget.get());
+
+					Log.log(String.format("Ship %s can't find a good target anymore.", ship.getId()));
 
 					return new Move(Move.MoveType.Noop, ship);
 				})
 				.filter(Objects::nonNull)
 				.collect(Collectors.toList());
 
+	}
+
+	private Optional<Entity> getBestTarget(Ship ship, Optional<Entity>[] targets, Map<Optional, Double> weightMap) {
+		return Arrays.stream(targets)
+				.filter(t -> t.isPresent() && t.get() != null)
+				.map(Optional::get)
+				.sorted(Comparator.comparingDouble(t -> ship.getDistanceTo(t) * weightMap.getOrDefault(t, 1.0)))
+				.findFirst();
 	}
 }
