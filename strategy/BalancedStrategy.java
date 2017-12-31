@@ -19,6 +19,8 @@ public class BalancedStrategy extends AbstractStrategy {
 		return gameMap.getMyPlayer().getShips().values().stream()
 				.filter(ship -> ship.getDockingStatus() == Ship.DockingStatus.Undocked)
 				.map(ship -> {
+					if (mayCollide(ship)) return new Move(Move.MoveType.Noop, ship);
+
 					// Does the ship already have a target? If yes, keep following it
 					Optional<Entity> target = getShipTarget(ship);
 					if (isTargetPlanetValid(target)) {
@@ -92,6 +94,14 @@ public class BalancedStrategy extends AbstractStrategy {
 		if (!target.isPresent()) return false;
 		if (!(target.get() instanceof Ship)) return false;
 		return true;
+	}
+
+	private boolean mayCollide(Ship ship) {
+		Collection<Ship> myShips = gameMap.getMyPlayer().getShips().values();
+		return myShips.stream()
+				.filter(s -> !s.equals(ship))
+				.filter(s -> s.getDockingStatus().equals(Ship.DockingStatus.Undocked))
+				.anyMatch(s -> ship.getDistanceTo(s) <= 5 && ship.orientTowardsInDeg(s) <= 45 && ship.orientTowardsInDeg(s) >= -45);
 	}
 
 	private List<Entity> getTargetPriorityByWeightedDistance(Ship ship, Optional<Entity>[] targets, Map<Optional, Double> weightMap) {

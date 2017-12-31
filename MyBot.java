@@ -12,7 +12,7 @@ public class MyBot {
 
     public static void main(final String[] args) {
         final Networking networking = new Networking();
-        final GameMap gameMap = networking.initialize("n1try-basic-v1.10");
+        final GameMap gameMap = networking.initialize("n1try-basic-v1.11");
 
         AbstractStrategy currentStrategy = StrategyFactory.chooseStrategy(gameMap);
 
