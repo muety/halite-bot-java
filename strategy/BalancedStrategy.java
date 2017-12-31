@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 public class BalancedStrategy extends AbstractStrategy {
 	private static final int MAX_OWN_DOCKINGS = 3;
+	private List<Integer> shipsOnHold = new LinkedList<>();
 
 	public BalancedStrategy(GameMap gameMap) {
 		super(gameMap);
@@ -19,7 +20,13 @@ public class BalancedStrategy extends AbstractStrategy {
 		return gameMap.getMyPlayer().getShips().values().stream()
 				.filter(ship -> ship.getDockingStatus() == Ship.DockingStatus.Undocked)
 				.map(ship -> {
-					if (mayCollide(ship)) return new Move(Move.MoveType.Noop, ship);
+					if (mayCollide(ship)) {
+						if (!shipsOnHold.contains(ship.getId())) {
+							shipsOnHold.add(ship.getId());
+							return new Move(Move.MoveType.Noop, ship);
+						}
+						shipsOnHold.remove(ship.getId()); // only hold for one turn
+					}
 
 					// Does the ship already have a target? If yes, keep following it
 					Optional<Entity> target = getShipTarget(ship);
@@ -101,7 +108,7 @@ public class BalancedStrategy extends AbstractStrategy {
 		return myShips.stream()
 				.filter(s -> !s.equals(ship))
 				.filter(s -> s.getDockingStatus().equals(Ship.DockingStatus.Undocked))
-				.anyMatch(s -> ship.getDistanceTo(s) <= 5 && ship.orientTowardsInDeg(s) <= 45 && ship.orientTowardsInDeg(s) >= -45);
+				.anyMatch(s -> ship.getDistanceTo(s) <= 5 && ship.orientTowardsInDeg(s) <= 45 && ship.orientTowardsInDeg(s) >= 300);
 	}
 
 	private List<Entity> getTargetPriorityByWeightedDistance(Ship ship, Optional<Entity>[] targets, Map<Optional, Double> weightMap) {
