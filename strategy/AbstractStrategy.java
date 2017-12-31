@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class AbstractStrategy {
@@ -77,9 +78,9 @@ public abstract class AbstractStrategy {
 	}
 
 	protected void cleanUp() {
-		Map<Integer, Ship> myShips = gameMap.getMyPlayer().getShips();
+		Map<Integer, Ship> allShipIds = gameMap.getAllShips().stream().collect(Collectors.toMap(Ship::getId, Function.identity()));
 		shipTargets = shipTargets.entrySet().stream()
-				.filter(e -> myShips.containsKey(e.getKey()))
+				.filter(e -> allShipIds.containsKey(e.getKey()))
 				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
 
