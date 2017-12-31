@@ -5,6 +5,8 @@ import strategy.StrategyFactory;
 
 // TODO: Avoid collisions among own ships (especially in the beginning)
 // TODO: Dynamically adapt different strategies
+// TODO: AggressiveStrategy: Instantly attack opponents
+// TODO: MiningStrategy: Dock all ships at largest planet until it's full and spam ships afterrwads
 
 public class MyBot {
 
