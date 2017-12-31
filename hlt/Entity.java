@@ -32,6 +32,24 @@ public class Entity extends Position {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Entity)) return false;
+        if (!super.equals(o)) return false;
+
+        Entity entity = (Entity) o;
+
+        return getId() == entity.getId();
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + getId();
+        return result;
+    }
+
+    @Override
     public String toString() {
         return "Entity[" +
                 super.toString() +

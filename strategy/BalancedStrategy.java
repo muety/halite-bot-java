@@ -28,12 +28,12 @@ public class BalancedStrategy extends AbstractStrategy {
 							shipTargets.remove(ship.getId());
 							return new DockMove(ship, targetPlanet);
 						}
-						return Navigation.navigateShipToDock(gameMap, ship, targetPlanet, Constants.MAX_SPEED);
+						return targetTo(ship, targetPlanet);
 					}
 					else if (isTargetEnemyShipValid(target)) {
 						Ship targetEnemy = (Ship) target.get();
 						Log.log(String.format("Ship %s has target enemy ship %s with distance of %s.", ship.getId(), targetEnemy.getId(), ship.getDistanceTo(targetEnemy)));
-						return Navigation.navigateShipToDock(gameMap, ship, targetEnemy, Constants.MAX_SPEED);
+						return targetTo(ship, targetEnemy);
 					}
 
 					shipTargets.remove(ship.getId());
@@ -42,7 +42,7 @@ public class BalancedStrategy extends AbstractStrategy {
 
 					// Choose a target
 					Optional<Planet> closestEmptyPlanet = findClosestEmptyNonTargetedPlanet(ship);
-					Optional<Planet> closestOwnPlanet = findClosestOwnPlanets(ship).stream().filter(p -> p.numDockedShips() < MAX_OWN_DOCKINGS).findFirst();
+					Optional<Planet> closestOwnPlanet = findClosestOwnPlanets(ship).stream().filter(this::isDockingCandidate).findFirst();
 					Optional<Ship> closestEnemy = findClosestEnemyShip(ship);
 					Optional<Ship> closestTargetedEnemy = findClosestTargetedEnemyShip(ship);
 
@@ -73,14 +73,19 @@ public class BalancedStrategy extends AbstractStrategy {
 
 	}
 
+	private boolean isDockingCandidate(Planet target) {
+		if (target.isOwned()) {
+			if (target.getOwner() != gameMap.getMyPlayer().getId()) return false;
+			if (target.numDockedShips() >= MAX_OWN_DOCKINGS) return false;
+			if (target.isFull()) return false;
+		}
+		return true;
+	}
+
 	private boolean isTargetPlanetValid(Optional<Entity> target) {
 		if (!target.isPresent()) return false;
 		if (!(target.get() instanceof Planet)) return false;
-		if (((Planet) target.get()).isOwned()) {
-			if (target.get().getOwner() != gameMap.getMyPlayer().getId()) return false;
-			if (((Planet) target.get()).numDockedShips() > MAX_OWN_DOCKINGS) return false;
-		}
-		return true;
+		return isDockingCandidate((Planet) target.get());
 	}
 
 	private boolean isTargetEnemyShipValid(Optional<Entity> target) {
