@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class AggressiveStrategy extends AbstractStrategy {
+	private boolean keep = true;
+
 	public AggressiveStrategy(GameMap gameMap) {
 		super(gameMap);
 	}
@@ -27,8 +29,14 @@ public class AggressiveStrategy extends AbstractStrategy {
 
 					Optional<Ship> potentialTarget = findClosestNonTargetedEnemyShip(ship);
 					if (!potentialTarget.isPresent()) potentialTarget = findClosestTargetedEnemyShip(ship);
+					keep = potentialTarget.isPresent();
 					return targetTo(ship, potentialTarget.orElse(null));
 				})
 				.collect(Collectors.toList());
+	}
+
+	@Override
+	public boolean keep() {
+		return keep;
 	}
 }

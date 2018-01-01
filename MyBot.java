@@ -8,16 +8,11 @@ import strategy.StrategyFactory;
 import java.util.LinkedList;
 import java.util.List;
 
-// TODO: Avoid collisions among own ships (especially in the beginning)
-// TODO: Dynamically adapt different strategies
-// TODO: AggressiveStrategy: Instantly attack opponents
-// TODO: MiningStrategy: Dock all ships at largest planet until it's full and spam ships afterrwads
-
 public class MyBot {
 
     public static void main(final String[] args) {
         final Networking networking = new Networking();
-        final GameMap gameMap = networking.initialize("n1try-basic-v1.12");
+        final GameMap gameMap = networking.initialize("n1try-basic-v1.13");
         List<Move> lastMoves = new LinkedList<>();
 
         AbstractStrategy currentStrategy = null;

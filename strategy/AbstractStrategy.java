@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 public abstract class AbstractStrategy {
 	protected GameMap gameMap;
 	protected Map<Integer, Entity> shipTargets = new HashMap<>();
+	protected List<Integer> shipsOnHold = new LinkedList<>();
 
 	public AbstractStrategy(GameMap gameMap) {
 		this.gameMap = gameMap;
@@ -15,9 +16,11 @@ public abstract class AbstractStrategy {
 
 	public abstract List<Move> apply();
 
+	public abstract boolean keep();
+
 	protected List<Planet> findClosestOwnPlanets(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
-				.sorted(Map.Entry.comparingByKey())
+				.sorted((p1, p2) -> Double.compare(p1.getKey(), p2.getKey()))
 				.map(Map.Entry::getValue)
 				.filter(e -> e instanceof Planet)
 				.map(e -> (Planet) e)
@@ -31,20 +34,25 @@ public abstract class AbstractStrategy {
 		return ownPlanets.size() > 0 ? Optional.of(ownPlanets.get(0)) : Optional.empty();
 	}
 
-	protected Optional<Planet> findClosestEmptyNonTargetedPlanet(Ship ship) {
+	protected List<Planet> findClosestEmptyPlanets(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
-				.sorted(Map.Entry.comparingByKey())
+				.sorted((p1, p2) -> Double.compare(p1.getKey(), p2.getKey()))
 				.map(Map.Entry::getValue)
 				.filter(e -> e instanceof Planet)
 				.map(e -> (Planet) e)
 				.filter(p -> !p.isOwned())
+				.collect(Collectors.toList());
+	}
+
+	protected Optional<Planet> findClosestEmptyNonTargetedPlanet(Ship ship) {
+		return findClosestEmptyPlanets(ship).stream()
 				.filter(p -> !shipTargets.values().contains(p))
 				.findFirst();
 	}
 
 	protected List<Ship> findClosestEnemyShips(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
-				.sorted(Map.Entry.comparingByKey())
+				.sorted((p1, p2) -> Double.compare(p1.getKey(), p2.getKey()))
 				.map(Map.Entry::getValue)
 				.filter(e -> e instanceof Ship)
 				.map(e -> (Ship) e)
@@ -112,6 +120,13 @@ public abstract class AbstractStrategy {
 	protected boolean isTargetPlanetValid(Optional<Entity> target) {
 		if (!target.isPresent()) return false;
 		if (!(target.get() instanceof Planet)) return false;
+		return isDockingCandidate((Planet) target.get());
+	}
+
+	protected boolean isDockingCandidate(Planet target) {
+		if (target.isOwned()) {
+			if (target.isFull()) return false;
+		}
 		return true;
 	}
 
@@ -119,5 +134,25 @@ public abstract class AbstractStrategy {
 		if (!target.isPresent()) return false;
 		if (!(target.get() instanceof Ship)) return false;
 		return true;
+	}
+
+	protected boolean mayCollide(Ship ship) {
+		Collection<Ship> myShips = gameMap.getMyPlayer().getShips().values();
+		return myShips.stream()
+				.filter(s -> !s.equals(ship))
+				.filter(s -> s.getDockingStatus().equals(Ship.DockingStatus.Undocked))
+				.anyMatch(s -> ship.getDistanceTo(s) <= 5 && (ship.orientTowardsInDeg(s) <= 60 || ship.orientTowardsInDeg(s) >= 300));
+	}
+
+	protected Optional<Move> avoidCollision(Ship ship) {
+		if (mayCollide(ship)) {
+			if (!shipsOnHold.contains(ship.getId())) {
+				Log.log(String.format("Ship %d stopping due to potential collision.", ship.getId()));
+				shipsOnHold.add(ship.getId());
+				return Optional.of(new Move(Move.MoveType.Noop, ship));
+			}
+			shipsOnHold.remove(Integer.valueOf(ship.getId())); // only hold for one turn
+		}
+		return Optional.empty();
 	}
 }

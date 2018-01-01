@@ -58,4 +58,9 @@ public class BasicStrategy extends AbstractStrategy {
 				.collect(Collectors.toList());
 
 	}
+
+	@Override
+	public boolean keep() {
+		return true;
+	}
 }
