@@ -3,7 +3,6 @@ package strategy;
 import hlt.*;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -14,7 +13,7 @@ public class BasicStrategy extends AbstractStrategy {
 
 	@Override
 	public List<Move> apply() {
-		cleanUp();
+		updateTargets();
 
 		return gameMap.getMyPlayer().getShips().values().stream()
 				.filter(ship -> ship.getDockingStatus() == Ship.DockingStatus.Undocked)
@@ -56,7 +55,6 @@ public class BasicStrategy extends AbstractStrategy {
 
 					return new Move(Move.MoveType.Noop, ship);
 				})
-				.filter(Objects::nonNull)
 				.collect(Collectors.toList());
 
 	}

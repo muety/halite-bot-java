@@ -2,11 +2,7 @@ package strategy;
 
 import hlt.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Function;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public abstract class AbstractStrategy {
@@ -46,25 +42,41 @@ public abstract class AbstractStrategy {
 				.findFirst();
 	}
 
-	protected Optional<Ship> findClosestEnemyShip(Ship ship) {
+	protected List<Ship> findClosestEnemyShips(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
 				.sorted(Map.Entry.comparingByKey())
 				.map(Map.Entry::getValue)
 				.filter(e -> e instanceof Ship)
 				.map(e -> (Ship) e)
 				.filter(s -> s.getOwner() != gameMap.getMyPlayer().getId())
-				.findFirst();
+				.collect(Collectors.toList());
+	}
+
+	protected List<Ship> findClosestNonTargetedEnemyShips(Ship ship) {
+		return findClosestEnemyShips(ship).stream()
+				.filter(s -> !shipTargets.values().contains(s))
+				.collect(Collectors.toList());
+	}
+
+	protected List<Ship> findClosestTargetedEnemyShips(Ship ship) {
+		return findClosestEnemyShips(ship).stream()
+				.filter(s -> shipTargets.values().contains(s))
+				.collect(Collectors.toList());
+	}
+
+	protected Optional<Ship> findClosestEnemyShip(Ship ship) {
+		List<Ship> ships = findClosestEnemyShips(ship);
+		return ships.size() > 0 ? Optional.of(ships.get(0)) : Optional.empty();
 	}
 
 	protected Optional<Ship> findClosestTargetedEnemyShip(Ship ship) {
-		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
-				.sorted(Map.Entry.comparingByKey())
-				.map(Map.Entry::getValue)
-				.filter(e -> e instanceof Ship)
-				.map(e -> (Ship) e)
-				.filter(s -> s.getOwner() != gameMap.getMyPlayer().getId())
-				.filter(s -> shipTargets.values().contains(s))
-				.findFirst();
+		List<Ship> ships = findClosestTargetedEnemyShips(ship);
+		return ships.size() > 0 ? Optional.of(ships.get(0)) : Optional.empty();
+	}
+
+	protected Optional<Ship> findClosestNonTargetedEnemyShip(Ship ship) {
+		List<Ship> ships = findClosestNonTargetedEnemyShips(ship);
+		return ships.size() > 0 ? Optional.of(ships.get(0)) : Optional.empty();
 	}
 
 	protected Optional<Entity> getShipTarget(Ship ship) {
@@ -77,16 +89,35 @@ public abstract class AbstractStrategy {
 		}
 	}
 
-	protected void cleanUp() {
-		Map<Integer, Ship> allShipIds = gameMap.getAllShips().stream().collect(Collectors.toMap(Ship::getId, Function.identity()));
+	protected void updateTargets() {
 		shipTargets = shipTargets.entrySet().stream()
-				.filter(e -> allShipIds.containsKey(e.getKey()))
+				.map(t -> {
+					Map.Entry<Integer, Entity> entry = t;
+					if (t.getValue() instanceof Ship) entry = new AbstractMap.SimpleEntry(t.getKey(), gameMap.getShip(t.getValue().getOwner(), t.getValue().getId()));
+					if (t.getValue() instanceof Planet) entry = new AbstractMap.SimpleEntry(t.getKey(), gameMap.getPlanet(t.getValue().getId()));
+					return entry;
+				})
+				.filter(e -> e != null && e.getKey() != null && e.getValue() != null)
 				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
 
 	protected Move targetTo(Ship ship, Entity target) {
-		Log.log(String.format("Ship %s chooses %s as new target with distance %s.", ship.getId(), target.summary(), ship.getDistanceTo(target)));
+		Log.log(String.format("Ship %s navigates to %s with distance %s at %f, %f.", ship.getId(), target.summary(), ship.getDistanceTo(target), target.getXPos(), target.getYPos()));
+		if (target == null) return new Move(Move.MoveType.Noop, ship);
 		shipTargets.put(ship.getId(), target);
-		return new Navigation().navigateShipToDock(gameMap, ship, target, Constants.MAX_SPEED);
+		Move navigationMove = new Navigation().navigateShipToDock(gameMap, ship, target, Constants.MAX_SPEED);
+		return navigationMove != null ? navigationMove : new Move(Move.MoveType.Noop, ship);
+	}
+
+	protected boolean isTargetPlanetValid(Optional<Entity> target) {
+		if (!target.isPresent()) return false;
+		if (!(target.get() instanceof Planet)) return false;
+		return true;
+	}
+
+	protected boolean isTargetEnemyShipValid(Optional<Entity> target) {
+		if (!target.isPresent()) return false;
+		if (!(target.get() instanceof Ship)) return false;
+		return true;
 	}
 }

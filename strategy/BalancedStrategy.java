@@ -15,7 +15,7 @@ public class BalancedStrategy extends AbstractStrategy {
 
 	@Override
 	public List<Move> apply() {
-		cleanUp();
+		updateTargets();
 
 		return gameMap.getMyPlayer().getShips().values().stream()
 				.filter(ship -> ship.getDockingStatus() == Ship.DockingStatus.Undocked)
@@ -77,7 +77,6 @@ public class BalancedStrategy extends AbstractStrategy {
 					// --> actually, if this even happens, we should have won already
 					return new Move(Move.MoveType.Noop, ship);
 				})
-				.filter(Objects::nonNull)
 				.collect(Collectors.toList());
 
 	}
@@ -91,16 +90,10 @@ public class BalancedStrategy extends AbstractStrategy {
 		return true;
 	}
 
-	private boolean isTargetPlanetValid(Optional<Entity> target) {
-		if (!target.isPresent()) return false;
-		if (!(target.get() instanceof Planet)) return false;
+	@Override
+	protected boolean isTargetPlanetValid(Optional<Entity> target) {
+		if (!super.isTargetPlanetValid(target)) return false;
 		return isDockingCandidate((Planet) target.get());
-	}
-
-	private boolean isTargetEnemyShipValid(Optional<Entity> target) {
-		if (!target.isPresent()) return false;
-		if (!(target.get() instanceof Ship)) return false;
-		return true;
 	}
 
 	private boolean mayCollide(Ship ship) {
