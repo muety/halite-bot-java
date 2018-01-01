@@ -17,7 +17,7 @@ public class AggressiveStrategy extends AbstractStrategy {
 	public List<Move> apply() {
 		updateTargets();
 
-		return gameMap.getMyPlayer().getShips().values().stream()
+		List<Move> moves = gameMap.getMyPlayer().getShips().values().stream()
 				.map(ship -> {
 					// Does the ship already have a target? If yes, keep following it
 					Optional<Entity> target = getShipTarget(ship);
@@ -33,6 +33,8 @@ public class AggressiveStrategy extends AbstractStrategy {
 					return targetTo(ship, potentialTarget.orElse(null));
 				})
 				.collect(Collectors.toList());
+
+		return modifyAvoidCollisions(moves);
 	}
 
 	@Override

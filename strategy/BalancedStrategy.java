@@ -16,11 +16,11 @@ public class BalancedStrategy extends AbstractStrategy {
 	public List<Move> apply() {
 		updateTargets();
 
-		return gameMap.getMyPlayer().getShips().values().stream()
+		List<Move> moves = gameMap.getMyPlayer().getShips().values().stream()
 				.filter(ship -> ship.getDockingStatus() == Ship.DockingStatus.Undocked)
 				.map(ship -> {
-					Optional<Move> m = avoidCollision(ship);
-					if (avoidCollision(ship).isPresent()) return m.get();
+					//Optional<Move> m = avoidCollision(ship);
+					//if (avoidCollision(ship).isPresent()) return m.get();
 
 					// Does the ship already have a target? If yes, keep following it
 					Optional<Entity> target = getShipTarget(ship);
@@ -73,6 +73,7 @@ public class BalancedStrategy extends AbstractStrategy {
 				})
 				.collect(Collectors.toList());
 
+		return modifyAvoidCollisions(moves);
 	}
 
 	@Override

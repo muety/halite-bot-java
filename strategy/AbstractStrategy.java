@@ -20,7 +20,7 @@ public abstract class AbstractStrategy {
 
 	protected List<Planet> findClosestOwnPlanets(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
-				.sorted((p1, p2) -> Double.compare(p1.getKey(), p2.getKey()))
+				.sorted(Comparator.comparingDouble(Map.Entry::getKey))
 				.map(Map.Entry::getValue)
 				.filter(e -> e instanceof Planet)
 				.map(e -> (Planet) e)
@@ -36,7 +36,7 @@ public abstract class AbstractStrategy {
 
 	protected List<Planet> findClosestEmptyPlanets(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
-				.sorted((p1, p2) -> Double.compare(p1.getKey(), p2.getKey()))
+				.sorted(Comparator.comparingDouble(Map.Entry::getKey))
 				.map(Map.Entry::getValue)
 				.filter(e -> e instanceof Planet)
 				.map(e -> (Planet) e)
@@ -52,7 +52,7 @@ public abstract class AbstractStrategy {
 
 	protected List<Ship> findClosestEnemyShips(Ship ship) {
 		return gameMap.nearbyEntitiesByDistance(ship).entrySet().stream()
-				.sorted((p1, p2) -> Double.compare(p1.getKey(), p2.getKey()))
+				.sorted(Comparator.comparingDouble(Map.Entry::getKey))
 				.map(Map.Entry::getValue)
 				.filter(e -> e instanceof Ship)
 				.map(e -> (Ship) e)
@@ -111,6 +111,7 @@ public abstract class AbstractStrategy {
 
 	protected Move targetTo(Ship ship, Entity target) {
 		Log.log(String.format("Ship %s navigates to %s with distance %s at %f, %f.", ship.getId(), target.summary(), ship.getDistanceTo(target), target.getXPos(), target.getYPos()));
+		if (target instanceof Planet) Log.log(String.format("Ship %d --> planet %d: %d", ship.getId(), target.getId(), ship.orientTowardsInDeg(target)));
 		if (target == null) return new Move(Move.MoveType.Noop, ship);
 		shipTargets.put(ship.getId(), target);
 		Move navigationMove = new Navigation().navigateShipToDock(gameMap, ship, target, Constants.MAX_SPEED);
@@ -138,15 +139,22 @@ public abstract class AbstractStrategy {
 
 	protected boolean mayCollide(Ship ship) {
 		Collection<Ship> myShips = gameMap.getMyPlayer().getShips().values();
+		if (!shipTargets.containsKey(ship.getId())) return false;
+		int angle1 = ship.orientTowardsInDeg(shipTargets.get(ship.getId()));
 		return myShips.stream()
 				.filter(s -> !s.equals(ship))
 				.filter(s -> s.getDockingStatus().equals(Ship.DockingStatus.Undocked))
-				.anyMatch(s -> ship.getDistanceTo(s) <= 5 && (ship.orientTowardsInDeg(s) <= 60 || ship.orientTowardsInDeg(s) >= 300));
+				.filter(s -> !shipsOnHold.contains(Integer.valueOf(s.getId())))
+				.anyMatch(s -> {
+					if (!shipTargets.containsKey(s.getId()) || ship.getDistanceTo(s) > 5) return false;
+					int angle2 = s.orientTowardsInDeg(shipTargets.get(s.getId()));
+					return ((Math.abs(angle1 - angle2) >= 30 && Math.abs(angle1 - angle2) <= 90) || (Math.abs(angle1 - angle2) >= 270 && Math.abs(angle1 - angle2) <= 330));
+				});
 	}
 
-	protected Optional<Move> avoidCollision(Ship ship) {
-		if (mayCollide(ship)) {
-			if (!shipsOnHold.contains(ship.getId())) {
+	protected Optional<Move> avoidCollision(Ship ship, boolean skipCheck) {
+		if (skipCheck || mayCollide(ship)) {
+			if (!shipsOnHold.contains(Integer.valueOf(ship.getId()))) {
 				Log.log(String.format("Ship %d stopping due to potential collision.", ship.getId()));
 				shipsOnHold.add(ship.getId());
 				return Optional.of(new Move(Move.MoveType.Noop, ship));
@@ -154,5 +162,20 @@ public abstract class AbstractStrategy {
 			shipsOnHold.remove(Integer.valueOf(ship.getId())); // only hold for one turn
 		}
 		return Optional.empty();
+	}
+
+	protected Optional<Move> avoidCollision(Ship ship) {
+		return avoidCollision(ship, false);
+	}
+
+	protected List<Move> modifyAvoidCollisions(List<Move> moves) {
+		return moves.stream()
+				.map(m -> {
+					if (!mayCollide(m.getShip())) return m;
+					Optional<Move> avoidanceMove = avoidCollision(m.getShip(), true);
+					if (!avoidanceMove.isPresent()) return m;
+					return avoidanceMove.get();
+				})
+				.collect(Collectors.toList());
 	}
 }
