@@ -5,6 +5,8 @@
 
 This is my rule-based solution for the [Halite](https://halite.io) AI competition. My bot is playing as [n1try](https://halite.io/user/?user_id=7481) and its best rank in the leaderboard was __250__. I also wrote a [blog post](https://ferdinand-muetsch.de/halite-a-rule-based-ai-bot.html) about this.
 
+Based on the [Java starter kit](https://halite.io/learn-programming-challenge/downloads-and-starter-kits/). Unix binaries (instead of `halite.exe`) can be found there to. 
+
 __If you're using my code to compete in the challenge, please give me a star 😇.__
 
 ![](https://i.imgur.com/xSmomlq.png)
